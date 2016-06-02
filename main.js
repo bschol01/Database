@@ -20,15 +20,26 @@ socket.on("reconnect", function () {
 
 socket.on("load", function (data) {
     gameEngine.entities.splice(1, gameEngine.entities.length - 1);
-    var players = data;
+    gameEngine.allPlayers.splice(0, gameEngine.allPlayers.length - 1);
+    var players = data.data;
     for (var i = 0; i < players.length; i++) {
-        gameEngine.addEntity(players[i]);
+        players[i].game = gameEngine;
+        var char = new Character(players[i]);
+        gameEngine.allPlayers.push(char);
+        gameEngine.addEntity(char);
     }
-
 });
 
 function Save() {
-    socket.emit("save", { studentname: "Brandon Scholer", statename: "Character States", data: gameEngine.allPlayers });
+    playerList = [];
+    for (var i = 0; i < gameEngine.allPlayers.length; i++) {
+        gameEngine.allPlayers[i].game = null;
+        playerList.push(gameEngine.allPlayers[i]);
+    }
+    socket.emit("save", { studentname: "Brandon Scholer", statename: "Character States", data: playerList });
+    for (var i = 0; i < gameEngine.allPlayers.length; i++) {
+        gameEngine.allPlayers[i].game = gameEngine;
+    }
     console.log("Saved");
 }
 
@@ -119,6 +130,7 @@ function Kain(game, spritesheet, x, y) {
 	this.stopRight = new Animation(spritesheet, 0, 32, 23, 30, .15, 1, true, false);
 	this.kneel = new Animation(spritesheet, 346, 35, 23, 30, .15, 1, true, false);
 	this.fall = new Animation(spritesheet, 395, 0, 23, 30, .15, 1, true, false);
+	this.char = 0;
 	this.hp = 10;
 	this.damage = 5;
 	this.scale = 2;
@@ -197,6 +209,7 @@ function DKCecil(game, spritesheet, x, y) {
 	this.kneel = new Animation(spritesheet, 292, 0, 23, 30, .15, 1, true, false);
 	this.fall = new Animation(spritesheet, 292, 32, 23, 30, .15, 1, true, false);
 	this.scale = 2;
+	this.char = 1;
 	this.x = x;
 	this.y = y;
 	this.hp = 10;
@@ -275,6 +288,7 @@ function Cecil(game, spritesheet, x, y) {
     this.kneel = new Animation(spritesheet, 320, 130, 23, 30, .15, 1, true, false);
     this.fall = new Animation(spritesheet, 320, 160, 23, 30, .15, 1, true, false);
     this.scale = 2;
+    this.char = 2;
     this.x = x;
     this.y = y;
     this.hp = 10;
@@ -352,6 +366,7 @@ function Rydia(game, spritesheet, x, y) {
     this.kneel = new Animation(spritesheet, 370, 0, 23, 30, .15, 1, true, false);
     this.fall = new Animation(spritesheet, 395, 95, 23, 30, .15, 1, true, false);
     this.scale = 2;
+    this.char = 3;
     this.x = x;
     this.y = y;
     this.hp = 10;
@@ -429,6 +444,7 @@ function CallerRydia(game, spritesheet, x, y) {
     this.kneel = new Animation(spritesheet, 375, 125, 23, 30, .15, 1, true, false);
     this.fall = new Animation(spritesheet, 395, 190, 23, 30, .15, 1, true, false);
     this.scale = 2;
+    this.char = 4;
     this.x = x;
     this.y = y;
     this.hp = 10;
@@ -506,6 +522,7 @@ function Rosa(game, spritesheet, x, y) {
     this.kneel = new Animation(spritesheet, 422, 190, 23, 30, .15, 1, true, false);
     this.fall = new Animation(spritesheet, 422, 225, 23, 30, .15, 1, true, false);
     this.scale = 2;
+    this.char = 5;
     this.x = x;
     this.y = y;
     this.hp = 10;
@@ -548,7 +565,131 @@ Rosa.prototype.update = function () {
     if (this.counter == 1000) this.counter = 0;
     if (this.counter % 20 == 0)
         getDir(this);
-        //this.dir = Math.floor(Math.random() * 5);
+    if (this.hp > 0) {
+        switch (this.dir) {
+            case UP:
+                this.y -= this.game.clockTick * this.speed;
+                break;
+            case RIGHT:
+                this.x += this.game.clockTick * this.speed;
+                break;
+            case LEFT:
+                this.x -= this.game.clockTick * this.speed;
+                break;
+            default:
+                this.y += this.game.clockTick * this.speed;
+                break;
+        }
+        if (this.x > 706) this.dir = LEFT;
+        else if (this.x < 1) this.dir = RIGHT;
+        if (this.y > 470) this.dir = UP;
+        else if (this.y < 1) this.dir = DOWN;
+    }
+    collide(this);
+}
+
+/******************************
+      Generic Character
+******************************/
+function Character(obj) {
+    var spritesheet = AM.getAsset("./img/ffiv.png");
+    switch (obj.char) {
+        case 0:
+            this.right = new Animation(spritesheet, 0, 32, 23, 30, .15, 3, true, false);
+            this.left = new Animation(spritesheet, 0, 95, 23, 30, .15, 3, true, false);
+            this.up = new Animation(spritesheet, 0, 0, 23, 30, .15, 3, true, false);
+            this.down = new Animation(spritesheet, 0, 62, 23, 30, .15, 3, true, false);
+            this.stopRight = new Animation(spritesheet, 0, 32, 23, 30, .15, 1, true, false);
+            this.kneel = new Animation(spritesheet, 346, 35, 23, 30, .15, 1, true, false);
+            this.fall = new Animation(spritesheet, 395, 0, 23, 30, .15, 1, true, false);
+            break;
+        case 1:
+            this.left = new Animation(spritesheet, 144, 95, 23, 30, .15, 3, true, false);
+            this.right = new Animation(spritesheet, 144, 30, 23, 30, .15, 3, true, false);
+            this.up = new Animation(spritesheet, 144, 0, 23, 30, .15, 3, true, false);
+            this.down = new Animation(spritesheet, 144, 60, 23, 30, .15, 3, true, false);
+            this.stopLeft = new Animation(spritesheet, 144, 95, 23, 30, .15, 1, true, false);
+            this.hit = new Animation(spritesheet, 319, 29, 23, 30, .15, 1, true, false);
+            this.kneel = new Animation(spritesheet, 292, 0, 23, 30, .15, 1, true, false);
+            this.fall = new Animation(spritesheet, 292, 32, 23, 30, .15, 1, true, false);
+            break;
+        case 2:
+            this.left = new Animation(spritesheet, 71, 95, 23, 30, .15, 3, true, false);
+            this.right = new Animation(spritesheet, 71, 30, 23, 30, .15, 3, true, false);
+            this.up = new Animation(spritesheet, 71, 0, 23, 30, .15, 3, true, false);
+            this.down = new Animation(spritesheet, 71, 60, 23, 30, .15, 3, true, false);
+            this.kneel = new Animation(spritesheet, 320, 130, 23, 30, .15, 1, true, false);
+            this.fall = new Animation(spritesheet, 320, 160, 23, 30, .15, 1, true, false);
+            break;
+        case 3:
+            this.left = new Animation(spritesheet, 0, 220, 23, 30, .15, 3, true, false);
+            this.right = new Animation(spritesheet, 0, 160, 23, 30, .15, 3, true, false);
+            this.up = new Animation(spritesheet, 0, 130, 23, 30, .15, 3, true, false);
+            this.down = new Animation(spritesheet, 0, 190, 23, 30, .15, 3, true, false);
+            this.kneel = new Animation(spritesheet, 370, 0, 23, 30, .15, 1, true, false);
+            this.fall = new Animation(spritesheet, 395, 95, 23, 30, .15, 1, true, false);
+            break;
+        case 4:
+            this.left = new Animation(spritesheet, 73, 220, 23, 30, .15, 3, true, false);
+            this.right = new Animation(spritesheet, 73, 160, 23, 30, .15, 3, true, false);
+            this.up = new Animation(spritesheet, 73, 130, 23, 30, .15, 3, true, false);
+            this.down = new Animation(spritesheet, 73, 190, 23, 30, .15, 3, true, false);
+            this.kneel = new Animation(spritesheet, 375, 125, 23, 30, .15, 1, true, false);
+            this.fall = new Animation(spritesheet, 395, 190, 23, 30, .15, 1, true, false);
+            break;
+        case 5:
+            this.left = new Animation(spritesheet, 220, 95, 23, 30, .15, 3, true, false);
+            this.right = new Animation(spritesheet, 220, 30, 23, 30, .15, 3, true, false);
+            this.up = new Animation(spritesheet, 220, 0, 23, 30, .15, 3, true, false);
+            this.down = new Animation(spritesheet, 220, 60, 23, 30, .15, 3, true, false);
+            this.kneel = new Animation(spritesheet, 422, 190, 23, 30, .15, 1, true, false);
+            this.fall = new Animation(spritesheet, 422, 225, 23, 30, .15, 1, true, false);
+            break;
+    }
+    
+    this.char = obj.char; //0;
+    this.hp = obj.hp; //10;
+    this.damage = obj.damage; //5;
+    this.scale = obj.scale; //2;
+    this.x = obj.x; //x;
+    this.y = obj.y; //y;
+    this.speed = obj.speed; //100;
+    this.level = obj.level; //1;
+    this.counter = obj.counter; //0;
+    this.deathCounter = obj.deathCounter; //0;
+    this.dir = obj.dir; //Math.floor(Math.random() * 5);
+    this.game = obj.game; //game;
+    this.ctx = obj.ctx; //game.ctx;
+}
+
+Character.prototype.draw = function (ctx) {
+    if (this.hp > 0) {
+        switch (this.dir) {
+            case UP:
+                this.up.drawFrame(this.game.clockTick, ctx, this.x, this.y, this.scale);
+                break;
+            case RIGHT:
+                this.right.drawFrame(this.game.clockTick, ctx, this.x, this.y, this.scale);
+                break;
+            case LEFT:
+                this.left.drawFrame(this.game.clockTick, ctx, this.x, this.y, this.scale);
+                break;
+            default:
+                this.down.drawFrame(this.game.clockTick, ctx, this.x, this.y, this.scale);
+        }
+    } else this.deathCounter++;
+
+    if (this.deathCounter > 0 && this.deathCounter < 10) this.kneel.drawFrame(this.game.clockTick, ctx, this.x, this.y, this.scale);
+    else if (this.deathCounter >= 10) this.fall.drawFrame(this.game.clockTick, ctx, this.x, this.y, this.scale);
+}
+
+Character.prototype.update = function () {
+    this.counter += 1;
+    if (this.counter == 1000) this.counter = 0;
+    if (this.counter % 20 == 0)
+        getDir(this);
+    //this.dir = Math.floor(Math.random() * 5);
+
     if (this.hp > 0) {
         switch (this.dir) {
             case UP:
@@ -582,7 +723,6 @@ AM.downloadAll(function () {
     var canvas = document.getElementById("gameWorld");
     var ctx = canvas.getContext("2d");
 
-    //var gameEngine = new GameEngine();
     gameEngine.init(ctx);
     gameEngine.start();
 
@@ -590,8 +730,6 @@ AM.downloadAll(function () {
     gameEngine.addEntity(new Background(gameEngine, AM.getAsset("./img/BG.jpg")));
 
     addPlayers(gameEngine);
-	
-	//gameEngine.addEntity(new Cecil(gameEngine, AM.getAsset("./img/ffiv.png")));
 
     console.log("All Done!");
 });
@@ -602,7 +740,6 @@ function addPlayers(game) {
 
     for (var i = 25; players > 0 && i > 0; i--) {
         var character = Math.floor(Math.random() * 6);
-        console.log(character);
         if (placed.indexOf(character) == -1) {
             switch (character) {
                 case 0:
@@ -627,7 +764,6 @@ function addPlayers(game) {
                     players -= 1;
                     break;
                 case 3:
-                    console.log("RYDIA");
                     var rydia = new Rydia(game, AM.getAsset("./img/ffiv.png"), Math.floor(Math.random() * 680) + 15, Math.floor(Math.random() * 450) + 15);
                     game.addEntity(rydia);
                     game.allPlayers.push(rydia);
